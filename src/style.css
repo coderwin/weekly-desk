@@ -102,22 +102,48 @@ h1 {
   padding: 0;
 }
 
+.list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .list li + li {
   border-top: 1px solid var(--line);
 }
 
 .list button {
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
+  cursor: pointer;
+}
+
+.todo-toggle {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   text-align: left;
   padding: 14px 0;
-  cursor: pointer;
+}
+
+.todo-toggle:focus-visible,
+.todo-delete:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.todo-delete {
+  flex: none;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 14px 0;
+}
+
+.todo-delete:hover {
+  color: var(--accent);
 }
 
 .check {
