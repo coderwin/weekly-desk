@@ -65,6 +65,8 @@ h1 {
 
 .composer {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-bottom: 28px;
 }
@@ -81,9 +83,21 @@ h1 {
 }
 
 .composer input:focus,
+.composer select:focus,
 .composer button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+}
+
+.composer select,
+.todo-edit select {
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 0;
 }
 
 .composer button {
@@ -162,8 +176,34 @@ h1 {
   padding: 8px 0;
 }
 
+.day + .day {
+  margin-top: 28px;
+}
+
+.day h2 {
+  margin: 0 0 4px;
+  font-family: Newsreader, serif;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.day h2 span {
+  margin-left: 8px;
+  color: var(--muted);
+  font-family: "IBM Plex Sans KR", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.empty-day {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .todo-edit input {
   flex: 1;
+  min-width: 0;
   border: none;
   border-bottom: 1px solid var(--ink);
   background: transparent;
