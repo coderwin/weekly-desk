@@ -56,6 +56,11 @@ function parseWeekday(value) {
   return weekday >= 1 && weekday <= 7 ? weekday : null;
 }
 
+function todayWeekday(date = new Date()) {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
+
 function todoWeekday(todo) {
   return parseWeekday(todo.weekday);
 }
@@ -162,11 +167,13 @@ function daySection(todos, section) {
   const openTodos = items.filter((todo) => !todo.done);
   const doneTodos = items.filter((todo) => todo.done);
   const dateLabel = dateForWeekday(section.weekday);
+  const isToday = section.weekday === todayWeekday();
 
   return `
-    <section class="day">
+    <section class="day${isToday ? " today" : ""}">
       <h2>
         ${section.label}
+        ${isToday ? `<em>오늘</em>` : ""}
         ${dateLabel ? `<span>${dateLabel}</span>` : ""}
       </h2>
       ${
@@ -200,7 +207,7 @@ function render() {
         />
         <label class="sr-only" for="todo-weekday">요일</label>
         <select id="todo-weekday" name="weekday">
-          ${weekdayOptions(null)}
+          ${weekdayOptions(todayWeekday())}
         </select>
         <button type="submit">추가</button>
       </form>
