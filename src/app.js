@@ -63,18 +63,40 @@ function escapeHtml(value) {
 
 const app = document.querySelector("#app");
 const thisWeekKey = toLocalDateKey(startOfWeek());
+let editingId = null;
 
 function thisWeekTodos(todos) {
   return todos.filter((todo) => todo.weekStart === thisWeekKey);
 }
 
 function todoItem(todo) {
+  if (todo.id === editingId) {
+    return `
+      <li class="${todo.done ? "done" : ""} editing">
+        <span class="check" aria-hidden="true"></span>
+        <form class="todo-edit" data-id="${todo.id}" autocomplete="off">
+          <label class="sr-only" for="edit-${todo.id}">할 일 수정</label>
+          <input
+            id="edit-${todo.id}"
+            name="text"
+            type="text"
+            maxlength="80"
+            value="${escapeHtml(todo.text)}"
+          />
+          <button type="submit">저장</button>
+          <button type="button" class="todo-cancel">취소</button>
+        </form>
+      </li>
+    `;
+  }
+
   return `
     <li class="${todo.done ? "done" : ""}">
       <button type="button" class="todo-toggle" data-id="${todo.id}" aria-pressed="${todo.done}">
         <span class="check" aria-hidden="true"></span>
         <span class="text">${escapeHtml(todo.text)}</span>
       </button>
+      <button type="button" class="todo-edit-start" data-id="${todo.id}">수정</button>
       <button type="button" class="todo-delete" data-id="${todo.id}">삭제</button>
     </li>
   `;
@@ -124,9 +146,29 @@ function render() {
   app.querySelectorAll(".todo-toggle").forEach((button) => {
     button.addEventListener("click", onToggle);
   });
+  app.querySelectorAll(".todo-edit-start").forEach((button) => {
+    button.addEventListener("click", onStartEdit);
+  });
+  app.querySelectorAll(".todo-edit").forEach((form) => {
+    form.addEventListener("submit", onSaveEdit);
+  });
+  app.querySelectorAll(".todo-cancel").forEach((button) => {
+    button.addEventListener("click", onCancelEdit);
+  });
   app.querySelectorAll(".todo-delete").forEach((button) => {
     button.addEventListener("click", onDelete);
   });
+
+  const editInput = app.querySelector(".todo-edit input");
+  if (editInput) {
+    editInput.focus();
+    editInput.select();
+    editInput.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") onCancelEdit();
+    });
+    return;
+  }
+
   app.querySelector("#todo-text").focus();
 }
 
@@ -161,6 +203,31 @@ function onDelete(event) {
   const id = event.currentTarget.dataset.id;
   const todos = loadTodos().filter((todo) => todo.id !== id);
   saveTodos(todos);
+  if (editingId === id) editingId = null;
+  render();
+}
+
+function onStartEdit(event) {
+  editingId = event.currentTarget.dataset.id;
+  render();
+}
+
+function onCancelEdit() {
+  editingId = null;
+  render();
+}
+
+function onSaveEdit(event) {
+  event.preventDefault();
+  const id = event.currentTarget.dataset.id;
+  const text = event.currentTarget.elements.text.value.trim();
+  if (!text) return;
+
+  const todos = loadTodos().map((todo) =>
+    todo.id === id ? { ...todo, text } : todo,
+  );
+  saveTodos(todos);
+  editingId = null;
   render();
 }
 
