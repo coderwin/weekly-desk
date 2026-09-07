@@ -71,10 +71,11 @@ function thisWeekTodos(todos) {
 function todoItem(todo) {
   return `
     <li class="${todo.done ? "done" : ""}">
-      <button type="button" data-id="${todo.id}" aria-pressed="${todo.done}">
+      <button type="button" class="todo-toggle" data-id="${todo.id}" aria-pressed="${todo.done}">
         <span class="check" aria-hidden="true"></span>
         <span class="text">${escapeHtml(todo.text)}</span>
       </button>
+      <button type="button" class="todo-delete" data-id="${todo.id}">삭제</button>
     </li>
   `;
 }
@@ -120,8 +121,11 @@ function render() {
   `;
 
   app.querySelector(".composer").addEventListener("submit", onAdd);
-  app.querySelectorAll("[data-id]").forEach((button) => {
+  app.querySelectorAll(".todo-toggle").forEach((button) => {
     button.addEventListener("click", onToggle);
+  });
+  app.querySelectorAll(".todo-delete").forEach((button) => {
+    button.addEventListener("click", onDelete);
   });
   app.querySelector("#todo-text").focus();
 }
@@ -149,6 +153,13 @@ function onToggle(event) {
   const todos = loadTodos().map((todo) =>
     todo.id === id ? { ...todo, done: !todo.done } : todo,
   );
+  saveTodos(todos);
+  render();
+}
+
+function onDelete(event) {
+  const id = event.currentTarget.dataset.id;
+  const todos = loadTodos().filter((todo) => todo.id !== id);
   saveTodos(todos);
   render();
 }
