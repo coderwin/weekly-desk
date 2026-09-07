@@ -130,11 +130,14 @@ h1 {
 }
 
 .todo-toggle:focus-visible,
-.todo-delete:focus-visible {
+.todo-edit-start:focus-visible,
+.todo-delete:focus-visible,
+.todo-edit button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
+.todo-edit-start,
 .todo-delete {
   flex: none;
   color: var(--muted);
@@ -142,8 +145,42 @@ h1 {
   padding: 14px 0;
 }
 
+.todo-edit-start:hover,
 .todo-delete:hover {
   color: var(--accent);
+}
+
+.editing {
+  align-items: center;
+}
+
+.todo-edit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.todo-edit input {
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  padding: 6px 0;
+}
+
+.todo-edit button {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0;
+}
+
+.todo-edit button[type="submit"] {
+  color: var(--ink);
 }
 
 .check {
