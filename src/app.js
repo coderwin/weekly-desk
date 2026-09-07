@@ -1,5 +1,16 @@
 const STORAGE_KEY = "weekly-todos";
 
+const DAY_SECTIONS = [
+  { weekday: 1, label: "월요일" },
+  { weekday: 2, label: "화요일" },
+  { weekday: 3, label: "수요일" },
+  { weekday: 4, label: "목요일" },
+  { weekday: 5, label: "금요일" },
+  { weekday: 6, label: "토요일" },
+  { weekday: 7, label: "일요일" },
+  { weekday: null, label: "언제든" },
+];
+
 function startOfWeek(date = new Date()) {
   const start = new Date(date);
   const weekday = start.getDay();
@@ -33,6 +44,22 @@ function formatWeekRange(date = new Date()) {
   return `${formatKoreanDate(start)} – ${formatKoreanDate(end)}`;
 }
 
+function dateForWeekday(weekday) {
+  if (weekday == null) return "";
+  const date = startOfWeek();
+  date.setDate(date.getDate() + (weekday - 1));
+  return formatKoreanDate(date);
+}
+
+function parseWeekday(value) {
+  const weekday = Number(value);
+  return weekday >= 1 && weekday <= 7 ? weekday : null;
+}
+
+function todoWeekday(todo) {
+  return parseWeekday(todo.weekday);
+}
+
 function loadTodos() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -61,12 +88,36 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function weekdayOptions(selected) {
+  const selectedValue = selected == null ? "" : String(selected);
+  const options = [
+    { value: "", label: "언제든" },
+    ...DAY_SECTIONS.filter((section) => section.weekday != null).map((section) => ({
+      value: String(section.weekday),
+      label: section.label.replace("요일", ""),
+    })),
+  ];
+
+  return options
+    .map(
+      (option) =>
+        `<option value="${option.value}" ${
+          option.value === selectedValue ? "selected" : ""
+        }>${option.label}</option>`,
+    )
+    .join("");
+}
+
 const app = document.querySelector("#app");
 const thisWeekKey = toLocalDateKey(startOfWeek());
 let editingId = null;
 
 function thisWeekTodos(todos) {
   return todos.filter((todo) => todo.weekStart === thisWeekKey);
+}
+
+function todosForSection(todos, weekday) {
+  return todos.filter((todo) => todoWeekday(todo) === weekday);
 }
 
 function todoItem(todo) {
@@ -83,6 +134,10 @@ function todoItem(todo) {
             maxlength="80"
             value="${escapeHtml(todo.text)}"
           />
+          <label class="sr-only" for="edit-day-${todo.id}">요일</label>
+          <select id="edit-day-${todo.id}" name="weekday">
+            ${weekdayOptions(todoWeekday(todo))}
+          </select>
           <button type="submit">저장</button>
           <button type="button" class="todo-cancel">취소</button>
         </form>
@@ -102,10 +157,29 @@ function todoItem(todo) {
   `;
 }
 
+function daySection(todos, section) {
+  const items = todosForSection(todos, section.weekday);
+  const openTodos = items.filter((todo) => !todo.done);
+  const doneTodos = items.filter((todo) => todo.done);
+  const dateLabel = dateForWeekday(section.weekday);
+
+  return `
+    <section class="day">
+      <h2>
+        ${section.label}
+        ${dateLabel ? `<span>${dateLabel}</span>` : ""}
+      </h2>
+      ${
+        items.length === 0
+          ? `<p class="empty-day">없음</p>`
+          : `<ul class="list">${openTodos.map(todoItem).join("")}${doneTodos.map(todoItem).join("")}</ul>`
+      }
+    </section>
+  `;
+}
+
 function render() {
   const todos = thisWeekTodos(loadTodos());
-  const openTodos = todos.filter((todo) => !todo.done);
-  const doneTodos = todos.filter((todo) => todo.done);
 
   app.innerHTML = `
     <main class="sheet">
@@ -124,21 +198,20 @@ function render() {
           maxlength="80"
           placeholder="이번 주에 할 일을 적고 Enter"
         />
+        <label class="sr-only" for="todo-weekday">요일</label>
+        <select id="todo-weekday" name="weekday">
+          ${weekdayOptions(null)}
+        </select>
         <button type="submit">추가</button>
       </form>
 
-      <section class="board" aria-live="polite">
+      <div class="board" aria-live="polite">
         ${
           todos.length === 0
             ? `<p class="empty">아직 할 일이 없습니다. 위에 하나 적어 보세요.</p>`
-            : `
-              <ul class="list">
-                ${openTodos.map(todoItem).join("")}
-                ${doneTodos.map(todoItem).join("")}
-              </ul>
-            `
+            : DAY_SECTIONS.map((section) => daySection(todos, section)).join("")
         }
-      </section>
+      </div>
     </main>
   `;
 
@@ -174,8 +247,8 @@ function render() {
 
 function onAdd(event) {
   event.preventDefault();
-  const input = event.currentTarget.elements.text;
-  const text = input.value.trim();
+  const form = event.currentTarget;
+  const text = form.elements.text.value.trim();
   if (!text) return;
 
   const todos = loadTodos();
@@ -183,6 +256,7 @@ function onAdd(event) {
     id: createId(),
     text,
     done: false,
+    weekday: parseWeekday(form.elements.weekday.value),
     weekStart: thisWeekKey,
     createdAt: new Date().toISOString(),
   });
@@ -219,12 +293,15 @@ function onCancelEdit() {
 
 function onSaveEdit(event) {
   event.preventDefault();
-  const id = event.currentTarget.dataset.id;
-  const text = event.currentTarget.elements.text.value.trim();
+  const form = event.currentTarget;
+  const id = form.dataset.id;
+  const text = form.elements.text.value.trim();
   if (!text) return;
 
   const todos = loadTodos().map((todo) =>
-    todo.id === id ? { ...todo, text } : todo,
+    todo.id === id
+      ? { ...todo, text, weekday: parseWeekday(form.elements.weekday.value) }
+      : todo,
   );
   saveTodos(todos);
   editingId = null;
