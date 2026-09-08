@@ -116,6 +116,7 @@ function weekdayOptions(selected) {
 const app = document.querySelector("#app");
 const thisWeekKey = toLocalDateKey(startOfWeek());
 let editingId = null;
+let notice = "";
 
 function thisWeekTodos(todos) {
   return todos.filter((todo) => todo.weekStart === thisWeekKey);
@@ -242,8 +243,19 @@ function render() {
             : DAY_SECTIONS.map((section) => daySection(todos, section)).join("")
         }
       </div>
+
+      <footer class="backup">
+        <button type="button" class="backup-export">내보내기</button>
+        <label class="backup-import">
+          가져오기
+          <input type="file" accept="application/json,.json" />
+        </label>
+        ${notice ? `<span class="backup-notice">${escapeHtml(notice)}</span>` : ""}
+      </footer>
     </main>
   `;
+
+  notice = "";
 
   app.querySelector(".composer").addEventListener("submit", onAdd);
   app
@@ -264,6 +276,10 @@ function render() {
   app.querySelectorAll(".todo-delete").forEach((button) => {
     button.addEventListener("click", onDelete);
   });
+  app.querySelector(".backup-export").addEventListener("click", onExport);
+  app
+    .querySelector(".backup-import input")
+    .addEventListener("change", onImport);
 
   const editInput = app.querySelector(".todo-edit input");
   if (editInput) {
@@ -294,6 +310,47 @@ function onAdd(event) {
     createdAt: new Date().toISOString(),
   });
   saveTodos(todos);
+  render();
+}
+
+function onExport() {
+  const blob = new Blob([JSON.stringify(loadTodos(), null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `weekly-desk-${toLocalDateKey(new Date())}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function onImport(event) {
+  const input = event.currentTarget;
+  const file = input.files[0];
+  if (!file) return;
+
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (!Array.isArray(parsed)) throw new Error("목록이 아닙니다.");
+
+    const todos = parsed.filter(
+      (item) =>
+        item && typeof item.id === "string" && typeof item.text === "string",
+    );
+    if (todos.length === 0) throw new Error("가져올 할 일이 없습니다.");
+
+    if (window.confirm(`할 일 ${todos.length}개로 덮어씁니다. 계속할까요?`)) {
+      saveTodos(todos);
+      editingId = null;
+      notice = `${todos.length}개를 가져왔습니다.`;
+    }
+  } catch {
+    notice = "가져오지 못했습니다. 내보낸 파일인지 확인해 주세요.";
+  }
+
+  input.value = "";
   render();
 }
 
