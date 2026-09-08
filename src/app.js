@@ -177,6 +177,7 @@ function daySection(todos, section) {
   const doneTodos = items.filter((todo) => todo.done);
   const dateLabel = dateForWeekday(section.weekday);
   const isToday = section.weekday === todayWeekday();
+  if (items.length === 0 && !isToday) return "";
 
   return `
     <section class="day${isToday ? " today" : ""}">
@@ -187,7 +188,7 @@ function daySection(todos, section) {
       </h2>
       ${
         items.length === 0
-          ? `<p class="empty-day">없음</p>`
+          ? `<p class="empty-day">오늘은 비어 있습니다.</p>`
           : `<ul class="list">${openTodos.map(todoItem).join("")}${doneTodos.map(todoItem).join("")}</ul>`
       }
     </section>
