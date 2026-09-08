@@ -121,6 +121,15 @@ function thisWeekTodos(todos) {
   return todos.filter((todo) => todo.weekStart === thisWeekKey);
 }
 
+function leftoverTodos(todos) {
+  return todos.filter(
+    (todo) =>
+      !todo.done &&
+      typeof todo.weekStart === "string" &&
+      todo.weekStart < thisWeekKey,
+  );
+}
+
 function todosForSection(todos, weekday) {
   return todos.filter((todo) => todoWeekday(todo) === weekday);
 }
@@ -186,7 +195,9 @@ function daySection(todos, section) {
 }
 
 function render() {
-  const todos = thisWeekTodos(loadTodos());
+  const stored = loadTodos();
+  const todos = thisWeekTodos(stored);
+  const leftover = leftoverTodos(stored);
 
   app.innerHTML = `
     <main class="sheet">
@@ -212,6 +223,17 @@ function render() {
         <button type="submit">추가</button>
       </form>
 
+      ${
+        leftover.length === 0
+          ? ""
+          : `
+            <p class="carry-over">
+              지난주에서 넘길 할 일 ${leftover.length}개
+              <button type="button" class="carry-over-run">이번 주로 넘기기</button>
+            </p>
+          `
+      }
+
       <div class="board" aria-live="polite">
         ${
           todos.length === 0
@@ -223,6 +245,9 @@ function render() {
   `;
 
   app.querySelector(".composer").addEventListener("submit", onAdd);
+  app
+    .querySelector(".carry-over-run")
+    ?.addEventListener("click", onCarryOver);
   app.querySelectorAll(".todo-toggle").forEach((button) => {
     button.addEventListener("click", onToggle);
   });
@@ -267,6 +292,15 @@ function onAdd(event) {
     weekStart: thisWeekKey,
     createdAt: new Date().toISOString(),
   });
+  saveTodos(todos);
+  render();
+}
+
+function onCarryOver() {
+  const leftoverIds = new Set(leftoverTodos(loadTodos()).map((todo) => todo.id));
+  const todos = loadTodos().map((todo) =>
+    leftoverIds.has(todo.id) ? { ...todo, weekStart: thisWeekKey } : todo,
+  );
   saveTodos(todos);
   render();
 }
