@@ -200,13 +200,21 @@ function render() {
   const stored = loadTodos();
   const todos = thisWeekTodos(stored);
   const leftover = leftoverTodos(stored);
+  const doneCount = todos.filter((todo) => todo.done).length;
 
   app.innerHTML = `
     <main class="sheet">
       <header class="masthead">
         <p class="eyebrow">Weekly desk</p>
         <h1>이번 주</h1>
-        <p class="range">${formatWeekRange()}</p>
+        <p class="range">
+          ${formatWeekRange()}
+          ${
+            todos.length === 0
+              ? ""
+              : `<span class="progress">${doneCount} / ${todos.length} 완료</span>`
+          }
+        </p>
       </header>
 
       <form class="composer" autocomplete="off">
@@ -335,10 +343,16 @@ async function onImport(event) {
     const parsed = JSON.parse(await file.text());
     if (!Array.isArray(parsed)) throw new Error("목록이 아닙니다.");
 
-    const todos = parsed.filter(
-      (item) =>
-        item && typeof item.id === "string" && typeof item.text === "string",
-    );
+    const seenIds = new Set();
+    const todos = parsed.filter((item) => {
+      if (!item || typeof item.id !== "string" || typeof item.text !== "string") {
+        return false;
+      }
+      if (seenIds.has(item.id)) return false;
+
+      seenIds.add(item.id);
+      return true;
+    });
     if (todos.length === 0) throw new Error("가져올 할 일이 없습니다.");
 
     if (window.confirm(`할 일 ${todos.length}개로 덮어씁니다. 계속할까요?`)) {
