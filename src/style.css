@@ -58,9 +58,19 @@ h1 {
 }
 
 .range {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 15px;
+}
+
+.progress {
+  flex: none;
+  color: var(--ink);
+  font-size: 13px;
 }
 
 .composer {
