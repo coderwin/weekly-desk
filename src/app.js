@@ -252,6 +252,17 @@ function render() {
         }
       </div>
 
+      ${
+        doneCount === 0
+          ? ""
+          : `
+            <p class="clear-done">
+              완료한 할 일 ${doneCount}개
+              <button type="button" class="clear-done-run">완료 지우기</button>
+            </p>
+          `
+      }
+
       <footer class="backup">
         <button type="button" class="backup-export">내보내기</button>
         <label class="backup-import">
@@ -269,6 +280,9 @@ function render() {
   app
     .querySelector(".carry-over-run")
     ?.addEventListener("click", onCarryOver);
+  app
+    .querySelector(".clear-done-run")
+    ?.addEventListener("click", onClearDone);
   app.querySelectorAll(".todo-toggle").forEach((button) => {
     button.addEventListener("click", onToggle);
   });
@@ -365,6 +379,21 @@ async function onImport(event) {
   }
 
   input.value = "";
+  render();
+}
+
+function onClearDone() {
+  const doneIds = new Set(
+    thisWeekTodos(loadTodos())
+      .filter((todo) => todo.done)
+      .map((todo) => todo.id),
+  );
+  if (doneIds.size === 0) return;
+  if (!window.confirm(`완료한 할 일 ${doneIds.size}개를 지울까요?`)) return;
+
+  const todos = loadTodos().filter((todo) => !doneIds.has(todo.id));
+  saveTodos(todos);
+  if (doneIds.has(editingId)) editingId = null;
   render();
 }
 

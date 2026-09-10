@@ -307,6 +307,39 @@ h1 {
   color: var(--muted);
 }
 
+.clear-done {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 28px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.clear-done-run {
+  flex: none;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.clear-done-run:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.clear-done-run:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .backup {
   display: flex;
   align-items: center;
