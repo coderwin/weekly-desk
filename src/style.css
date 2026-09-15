@@ -319,7 +319,8 @@ h1 {
   font-size: 14px;
 }
 
-.clear-done-run {
+.clear-done-run,
+.purge-old-run {
   flex: none;
   border: 1px solid var(--ink);
   background: transparent;
@@ -330,12 +331,14 @@ h1 {
   cursor: pointer;
 }
 
-.clear-done-run:hover {
+.clear-done-run:hover,
+.purge-old-run:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.clear-done-run:focus-visible {
+.clear-done-run:focus-visible,
+.purge-old-run:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
