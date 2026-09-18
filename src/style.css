@@ -185,6 +185,7 @@ h1 {
 
 .todo-toggle:focus-visible,
 .todo-edit-start:focus-visible,
+.todo-move:focus-visible,
 .todo-delete:focus-visible,
 .todo-edit button:focus-visible {
   outline: 2px solid var(--accent);
@@ -192,6 +193,7 @@ h1 {
 }
 
 .todo-edit-start,
+.todo-move,
 .todo-delete {
   flex: none;
   color: var(--muted);
@@ -200,8 +202,50 @@ h1 {
 }
 
 .todo-edit-start:hover,
+.todo-move:hover,
 .todo-delete:hover {
   color: var(--accent);
+}
+
+.todo-handle,
+.todo-handle-spacer {
+  flex: none;
+  width: 16px;
+  margin-top: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: -1px;
+  line-height: 1;
+  padding: 0;
+  cursor: grab;
+}
+
+.list .todo-handle {
+  cursor: grab;
+}
+
+.list .todo-handle:active {
+  cursor: grabbing;
+}
+
+.todo-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.list li.dragging {
+  opacity: 0.45;
+}
+
+.list li.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.list li.drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .editing {
