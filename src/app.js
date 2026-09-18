@@ -44,9 +44,14 @@ function formatWeekRange(date = new Date()) {
   return `${formatKoreanDate(start)} – ${formatKoreanDate(end)}`;
 }
 
-function dateForWeekday(weekday) {
+function dateFromKey(key) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function dateForWeekday(weekday, weekStart = startOfWeek()) {
   if (weekday == null) return "";
-  const date = startOfWeek();
+  const date = new Date(weekStart);
   date.setDate(date.getDate() + (weekday - 1));
   return formatKoreanDate(date);
 }
@@ -115,11 +120,23 @@ function weekdayOptions(selected) {
 
 const app = document.querySelector("#app");
 const thisWeekKey = toLocalDateKey(startOfWeek());
+const lastWeekStart = startOfWeek();
+lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+const lastWeekKey = toLocalDateKey(lastWeekStart);
+let viewingLastWeek = false;
 let editingId = null;
 let notice = "";
 
-function thisWeekTodos(todos) {
-  return todos.filter((todo) => todo.weekStart === thisWeekKey);
+function viewWeekKey() {
+  return viewingLastWeek ? lastWeekKey : thisWeekKey;
+}
+
+function viewWeekStart() {
+  return dateFromKey(viewWeekKey());
+}
+
+function weekTodos(todos, weekKey = viewWeekKey()) {
+  return todos.filter((todo) => todo.weekStart === weekKey);
 }
 
 function leftoverTodos(todos) {
@@ -185,8 +202,8 @@ function daySection(todos, section) {
   const items = todosForSection(todos, section.weekday);
   const openTodos = items.filter((todo) => !todo.done);
   const doneTodos = items.filter((todo) => todo.done);
-  const dateLabel = dateForWeekday(section.weekday);
-  const isToday = section.weekday === todayWeekday();
+  const dateLabel = dateForWeekday(section.weekday, viewWeekStart());
+  const isToday = !viewingLastWeek && section.weekday === todayWeekday();
   if (items.length === 0 && !isToday) return "";
 
   return `
@@ -207,18 +224,26 @@ function daySection(todos, section) {
 
 function render() {
   const stored = loadTodos();
-  const todos = thisWeekTodos(stored);
-  const leftover = leftoverTodos(stored);
-  const oldDone = oldDoneTodos(stored);
+  const todos = weekTodos(stored);
+  const leftover = viewingLastWeek ? [] : leftoverTodos(stored);
+  const oldDone = viewingLastWeek ? [] : oldDoneTodos(stored);
   const doneCount = todos.filter((todo) => todo.done).length;
 
   app.innerHTML = `
     <main class="sheet">
       <header class="masthead">
         <p class="eyebrow">Weekly desk</p>
-        <h1>이번 주</h1>
+        <h1>${viewingLastWeek ? "지난주" : "이번 주"}</h1>
+        <nav class="week-nav">
+          <button type="button" class="week-this" ${
+            viewingLastWeek ? "" : 'aria-current="page"'
+          }>이번 주</button>
+          <button type="button" class="week-last" ${
+            viewingLastWeek ? 'aria-current="page"' : ""
+          }>지난주</button>
+        </nav>
         <p class="range">
-          ${formatWeekRange()}
+          ${formatWeekRange(viewWeekStart())}
           ${
             todos.length === 0
               ? ""
@@ -227,6 +252,10 @@ function render() {
         </p>
       </header>
 
+      ${
+        viewingLastWeek
+          ? ""
+          : `
       <form class="composer" autocomplete="off">
         <label class="sr-only" for="todo-text">할 일</label>
         <input
@@ -242,6 +271,8 @@ function render() {
         </select>
         <button type="submit">추가</button>
       </form>
+          `
+      }
 
       ${
         leftover.length === 0
@@ -257,7 +288,11 @@ function render() {
       <div class="board" aria-live="polite">
         ${
           todos.length === 0
-            ? `<p class="empty">아직 할 일이 없습니다. 위에 하나 적어 보세요.</p>`
+            ? `<p class="empty">${
+                viewingLastWeek
+                  ? "지난주에 할 일이 없습니다."
+                  : "아직 할 일이 없습니다. 위에 하나 적어 보세요."
+              }</p>`
             : DAY_SECTIONS.map((section) => daySection(todos, section)).join("")
         }
       </div>
@@ -297,7 +332,17 @@ function render() {
 
   notice = "";
 
-  app.querySelector(".composer").addEventListener("submit", onAdd);
+  app.querySelector(".week-this").addEventListener("click", () => {
+    viewingLastWeek = false;
+    editingId = null;
+    render();
+  });
+  app.querySelector(".week-last").addEventListener("click", () => {
+    viewingLastWeek = true;
+    editingId = null;
+    render();
+  });
+  app.querySelector(".composer")?.addEventListener("submit", onAdd);
   app
     .querySelector(".carry-over-run")
     ?.addEventListener("click", onCarryOver);
@@ -337,7 +382,7 @@ function render() {
     return;
   }
 
-  app.querySelector("#todo-text").focus();
+  app.querySelector("#todo-text")?.focus();
 }
 
 function onAdd(event) {
@@ -408,7 +453,7 @@ async function onImport(event) {
 
 function onClearDone() {
   const doneIds = new Set(
-    thisWeekTodos(loadTodos())
+    weekTodos(loadTodos())
       .filter((todo) => todo.done)
       .map((todo) => todo.id),
   );
