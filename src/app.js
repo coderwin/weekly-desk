@@ -126,6 +126,7 @@ const lastWeekKey = toLocalDateKey(lastWeekStart);
 let viewingLastWeek = false;
 let editingId = null;
 let notice = "";
+let draggingId = null;
 
 function viewWeekKey() {
   return viewingLastWeek ? lastWeekKey : thisWeekKey;
@@ -161,7 +162,49 @@ function todosForSection(todos, weekday) {
   return todos.filter((todo) => todoWeekday(todo) === weekday);
 }
 
-function todoItem(todo) {
+function sameGroup(a, b) {
+  return (
+    a.weekStart === b.weekStart &&
+    todoWeekday(a) === todoWeekday(b) &&
+    a.done === b.done
+  );
+}
+
+function moveTodo(id, direction) {
+  const todos = loadTodos();
+  const current = todos.find((todo) => todo.id === id);
+  if (!current) return todos;
+
+  const groupIndexes = todos
+    .map((todo, index) => ({ todo, index }))
+    .filter(({ todo }) => sameGroup(todo, current));
+  const position = groupIndexes.findIndex(({ todo }) => todo.id === id);
+  const swap = groupIndexes[position + direction];
+  if (!swap) return todos;
+
+  const from = groupIndexes[position].index;
+  const copy = todos.slice();
+  [copy[from], copy[swap.index]] = [copy[swap.index], copy[from]];
+  return copy;
+}
+
+function placeTodo(fromId, toId, before) {
+  if (fromId === toId) return loadTodos();
+
+  const todos = loadTodos();
+  const from = todos.find((todo) => todo.id === fromId);
+  const to = todos.find((todo) => todo.id === toId);
+  if (!from || !to || !sameGroup(from, to)) return todos;
+
+  const next = todos.filter((todo) => todo.id !== fromId);
+  let at = next.findIndex((todo) => todo.id === toId);
+  if (at < 0) return todos;
+  if (!before) at += 1;
+  next.splice(at, 0, from);
+  return next;
+}
+
+function todoItem(todo, canMoveUp, canMoveDown) {
   if (todo.id === editingId) {
     return `
       <li class="${todo.done ? "done" : ""} editing">
@@ -187,12 +230,27 @@ function todoItem(todo) {
   }
 
   return `
-    <li class="${todo.done ? "done" : ""}">
+    <li class="${todo.done ? "done" : ""}" data-id="${todo.id}">
+      ${
+        canMoveUp || canMoveDown
+          ? `<button type="button" class="todo-handle" draggable="true" data-id="${todo.id}" aria-label="끌어 순서 바꾸기">::</button>`
+          : `<span class="todo-handle-spacer" aria-hidden="true"></span>`
+      }
       <button type="button" class="todo-toggle" data-id="${todo.id}" aria-pressed="${todo.done}">
         <span class="check" aria-hidden="true"></span>
         <span class="text">${escapeHtml(todo.text)}</span>
       </button>
       <button type="button" class="todo-edit-start" data-id="${todo.id}">수정</button>
+      ${
+        canMoveUp
+          ? `<button type="button" class="todo-move" data-id="${todo.id}" data-dir="-1">위로</button>`
+          : ""
+      }
+      ${
+        canMoveDown
+          ? `<button type="button" class="todo-move" data-id="${todo.id}" data-dir="1">아래로</button>`
+          : ""
+      }
       <button type="button" class="todo-delete" data-id="${todo.id}">삭제</button>
     </li>
   `;
@@ -216,7 +274,15 @@ function daySection(todos, section) {
       ${
         items.length === 0
           ? `<p class="empty-day">오늘은 비어 있습니다.</p>`
-          : `<ul class="list">${openTodos.map(todoItem).join("")}${doneTodos.map(todoItem).join("")}</ul>`
+          : `<ul class="list">${openTodos
+              .map((todo, index, list) =>
+                todoItem(todo, index > 0, index < list.length - 1),
+              )
+              .join("")}${doneTodos
+              .map((todo, index, list) =>
+                todoItem(todo, index > 0, index < list.length - 1),
+              )
+              .join("")}</ul>`
       }
     </section>
   `;
@@ -358,6 +424,10 @@ function render() {
   app.querySelectorAll(".todo-edit-start").forEach((button) => {
     button.addEventListener("click", onStartEdit);
   });
+  app.querySelectorAll(".todo-move").forEach((button) => {
+    button.addEventListener("click", onMove);
+  });
+  bindDrag();
   app.querySelectorAll(".todo-edit").forEach((form) => {
     form.addEventListener("submit", onSaveEdit);
   });
@@ -503,6 +573,63 @@ function onDelete(event) {
   saveTodos(todos);
   if (editingId === id) editingId = null;
   render();
+}
+
+function onMove(event) {
+  const id = event.currentTarget.dataset.id;
+  const direction = Number(event.currentTarget.dataset.dir);
+  saveTodos(moveTodo(id, direction));
+  render();
+}
+
+function clearDropMarks() {
+  app.querySelectorAll(".list li").forEach((item) => {
+    item.classList.remove("drop-before", "drop-after", "dragging");
+  });
+}
+
+function bindDrag() {
+  app.querySelectorAll(".todo-handle[draggable]").forEach((handle) => {
+    handle.addEventListener("dragstart", (event) => {
+      draggingId = handle.dataset.id;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggingId);
+      handle.closest("li")?.classList.add("dragging");
+    });
+    handle.addEventListener("dragend", () => {
+      draggingId = null;
+      clearDropMarks();
+    });
+  });
+
+  app.querySelectorAll(".list li[data-id]").forEach((item) => {
+    item.addEventListener("dragover", (event) => {
+      const source = loadTodos().find((todo) => todo.id === draggingId);
+      const target = loadTodos().find((todo) => todo.id === item.dataset.id);
+      if (!source || !target || !sameGroup(source, target)) return;
+
+      event.preventDefault();
+      const box = item.getBoundingClientRect();
+      const before = event.clientY < box.top + box.height / 2;
+      item.classList.toggle("drop-before", before);
+      item.classList.toggle("drop-after", !before);
+    });
+    item.addEventListener("dragleave", () => {
+      item.classList.remove("drop-before", "drop-after");
+    });
+    item.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const sourceId = draggingId;
+      const targetId = item.dataset.id;
+      const box = item.getBoundingClientRect();
+      const before = event.clientY < box.top + box.height / 2;
+      draggingId = null;
+      clearDropMarks();
+      if (!sourceId || !targetId) return;
+      saveTodos(placeTodo(sourceId, targetId, before));
+      render();
+    });
+  });
 }
 
 function onStartEdit(event) {
