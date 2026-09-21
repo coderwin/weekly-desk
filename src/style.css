@@ -412,9 +412,33 @@ h1 {
 }
 
 .clear-done-run:focus-visible,
-.purge-old-run:focus-visible {
+.purge-old-run:focus-visible,
+.undo-run:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+}
+
+.undo-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 28px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--accent);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.undo-run {
+  flex: none;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
 }
 
 .backup {
