@@ -127,6 +127,8 @@ let viewingLastWeek = false;
 let editingId = null;
 let notice = "";
 let draggingId = null;
+let undoSnapshot = null;
+let undoLabel = "";
 
 function viewWeekKey() {
   return viewingLastWeek ? lastWeekKey : thisWeekKey;
@@ -385,6 +387,17 @@ function render() {
           `
       }
 
+      ${
+        undoSnapshot
+          ? `
+            <p class="undo-bar">
+              ${escapeHtml(undoLabel)}
+              <button type="button" class="undo-run">되돌리기</button>
+            </p>
+          `
+          : ""
+      }
+
       <footer class="backup">
         <button type="button" class="backup-export">내보내기</button>
         <label class="backup-import">
@@ -418,6 +431,7 @@ function render() {
   app
     .querySelector(".purge-old-run")
     ?.addEventListener("click", onPurgeOldDone);
+  app.querySelector(".undo-run")?.addEventListener("click", onUndo);
   app.querySelectorAll(".todo-toggle").forEach((button) => {
     button.addEventListener("click", onToggle);
   });
@@ -461,6 +475,7 @@ function onAdd(event) {
   const text = form.elements.text.value.trim();
   if (!text) return;
 
+  forgetUndo();
   const todos = loadTodos();
   todos.push({
     id: createId(),
@@ -509,6 +524,7 @@ async function onImport(event) {
     if (todos.length === 0) throw new Error("가져올 할 일이 없습니다.");
 
     if (window.confirm(`할 일 ${todos.length}개로 덮어씁니다. 계속할까요?`)) {
+      forgetUndo();
       saveTodos(todos);
       editingId = null;
       notice = `${todos.length}개를 가져왔습니다.`;
@@ -521,6 +537,24 @@ async function onImport(event) {
   render();
 }
 
+function rememberUndo(label) {
+  undoSnapshot = loadTodos();
+  undoLabel = label;
+}
+
+function forgetUndo() {
+  undoSnapshot = null;
+  undoLabel = "";
+}
+
+function onUndo() {
+  if (!undoSnapshot) return;
+  saveTodos(undoSnapshot);
+  forgetUndo();
+  editingId = null;
+  render();
+}
+
 function onClearDone() {
   const doneIds = new Set(
     weekTodos(loadTodos())
@@ -530,6 +564,7 @@ function onClearDone() {
   if (doneIds.size === 0) return;
   if (!window.confirm(`완료한 할 일 ${doneIds.size}개를 지울까요?`)) return;
 
+  rememberUndo(`완료한 할 일 ${doneIds.size}개를 지웠습니다.`);
   const todos = loadTodos().filter((todo) => !doneIds.has(todo.id));
   saveTodos(todos);
   if (doneIds.has(editingId)) editingId = null;
@@ -543,6 +578,7 @@ function onPurgeOldDone() {
     return;
   }
 
+  rememberUndo(`지난주에 끝난 할 일 ${oldIds.size}개를 지웠습니다.`);
   const todos = loadTodos().filter((todo) => !oldIds.has(todo.id));
   saveTodos(todos);
   if (oldIds.has(editingId)) editingId = null;
@@ -551,6 +587,7 @@ function onPurgeOldDone() {
 
 function onCarryOver() {
   const leftoverIds = new Set(leftoverTodos(loadTodos()).map((todo) => todo.id));
+  forgetUndo();
   const todos = loadTodos().map((todo) =>
     leftoverIds.has(todo.id) ? { ...todo, weekStart: thisWeekKey } : todo,
   );
@@ -560,6 +597,7 @@ function onCarryOver() {
 
 function onToggle(event) {
   const id = event.currentTarget.dataset.id;
+  forgetUndo();
   const todos = loadTodos().map((todo) =>
     todo.id === id ? { ...todo, done: !todo.done } : todo,
   );
@@ -569,6 +607,7 @@ function onToggle(event) {
 
 function onDelete(event) {
   const id = event.currentTarget.dataset.id;
+  rememberUndo("할 일을 지웠습니다.");
   const todos = loadTodos().filter((todo) => todo.id !== id);
   saveTodos(todos);
   if (editingId === id) editingId = null;
@@ -578,6 +617,7 @@ function onDelete(event) {
 function onMove(event) {
   const id = event.currentTarget.dataset.id;
   const direction = Number(event.currentTarget.dataset.dir);
+  forgetUndo();
   saveTodos(moveTodo(id, direction));
   render();
 }
@@ -626,6 +666,7 @@ function bindDrag() {
       draggingId = null;
       clearDropMarks();
       if (!sourceId || !targetId) return;
+      forgetUndo();
       saveTodos(placeTodo(sourceId, targetId, before));
       render();
     });
@@ -649,6 +690,7 @@ function onSaveEdit(event) {
   const text = form.elements.text.value.trim();
   if (!text) return;
 
+  forgetUndo();
   const todos = loadTodos().map((todo) =>
     todo.id === id
       ? { ...todo, text, weekday: parseWeekday(form.elements.weekday.value) }
