@@ -87,6 +87,15 @@ h1 {
   outline-offset: 3px;
 }
 
+.week-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.week-nav button:disabled:hover {
+  color: var(--muted);
+}
+
 .range {
   display: flex;
   align-items: baseline;

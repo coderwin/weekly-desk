@@ -120,18 +120,31 @@ function weekdayOptions(selected) {
 
 const app = document.querySelector("#app");
 const thisWeekKey = toLocalDateKey(startOfWeek());
-const lastWeekStart = startOfWeek();
-lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-const lastWeekKey = toLocalDateKey(lastWeekStart);
-let viewingLastWeek = false;
+let weekOffset = 0;
 let editingId = null;
 let notice = "";
 let draggingId = null;
 let undoSnapshot = null;
 let undoLabel = "";
 
+function startOfWeekByOffset(offset) {
+  const start = startOfWeek();
+  start.setDate(start.getDate() + offset * 7);
+  return start;
+}
+
+function weekTitle(offset) {
+  if (offset === 0) return "이번 주";
+  if (offset === -1) return "지난주";
+  return `${-offset}주 전`;
+}
+
+function isPastWeek() {
+  return weekOffset < 0;
+}
+
 function viewWeekKey() {
-  return viewingLastWeek ? lastWeekKey : thisWeekKey;
+  return toLocalDateKey(startOfWeekByOffset(weekOffset));
 }
 
 function viewWeekStart() {
@@ -263,7 +276,7 @@ function daySection(todos, section) {
   const openTodos = items.filter((todo) => !todo.done);
   const doneTodos = items.filter((todo) => todo.done);
   const dateLabel = dateForWeekday(section.weekday, viewWeekStart());
-  const isToday = !viewingLastWeek && section.weekday === todayWeekday();
+  const isToday = !isPastWeek() && section.weekday === todayWeekday();
   if (items.length === 0 && !isToday) return "";
 
   return `
@@ -293,22 +306,23 @@ function daySection(todos, section) {
 function render() {
   const stored = loadTodos();
   const todos = weekTodos(stored);
-  const leftover = viewingLastWeek ? [] : leftoverTodos(stored);
-  const oldDone = viewingLastWeek ? [] : oldDoneTodos(stored);
+  const leftover = isPastWeek() ? [] : leftoverTodos(stored);
+  const oldDone = isPastWeek() ? [] : oldDoneTodos(stored);
   const doneCount = todos.filter((todo) => todo.done).length;
 
   app.innerHTML = `
     <main class="sheet">
       <header class="masthead">
         <p class="eyebrow">Weekly desk</p>
-        <h1>${viewingLastWeek ? "지난주" : "이번 주"}</h1>
+        <h1>${weekTitle(weekOffset)}</h1>
         <nav class="week-nav">
+          <button type="button" class="week-prev">이전 주</button>
           <button type="button" class="week-this" ${
-            viewingLastWeek ? "" : 'aria-current="page"'
+            weekOffset === 0 ? 'aria-current="page"' : ""
           }>이번 주</button>
-          <button type="button" class="week-last" ${
-            viewingLastWeek ? 'aria-current="page"' : ""
-          }>지난주</button>
+          <button type="button" class="week-next" ${
+            weekOffset === 0 ? "disabled" : ""
+          }>다음 주</button>
         </nav>
         <p class="range">
           ${formatWeekRange(viewWeekStart())}
@@ -321,7 +335,7 @@ function render() {
       </header>
 
       ${
-        viewingLastWeek
+        isPastWeek()
           ? ""
           : `
       <form class="composer" autocomplete="off">
@@ -357,8 +371,8 @@ function render() {
         ${
           todos.length === 0
             ? `<p class="empty">${
-                viewingLastWeek
-                  ? "지난주에 할 일이 없습니다."
+                isPastWeek()
+                  ? "이 주에 할 일이 없습니다."
                   : "아직 할 일이 없습니다. 위에 하나 적어 보세요."
               }</p>`
             : DAY_SECTIONS.map((section) => daySection(todos, section)).join("")
@@ -411,13 +425,19 @@ function render() {
 
   notice = "";
 
-  app.querySelector(".week-this").addEventListener("click", () => {
-    viewingLastWeek = false;
+  app.querySelector(".week-prev").addEventListener("click", () => {
+    weekOffset -= 1;
     editingId = null;
     render();
   });
-  app.querySelector(".week-last").addEventListener("click", () => {
-    viewingLastWeek = true;
+  app.querySelector(".week-this").addEventListener("click", () => {
+    weekOffset = 0;
+    editingId = null;
+    render();
+  });
+  app.querySelector(".week-next")?.addEventListener("click", () => {
+    if (weekOffset === 0) return;
+    weekOffset += 1;
     editingId = null;
     render();
   });
