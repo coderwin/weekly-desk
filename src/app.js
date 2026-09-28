@@ -617,7 +617,10 @@ function onCarryOver() {
 
 function onToggle(event) {
   const id = event.currentTarget.dataset.id;
-  forgetUndo();
+  const current = loadTodos().find((todo) => todo.id === id);
+  rememberUndo(
+    current?.done ? "완료를 취소했습니다." : "할 일을 완료했습니다.",
+  );
   const todos = loadTodos().map((todo) =>
     todo.id === id ? { ...todo, done: !todo.done } : todo,
   );
@@ -710,7 +713,7 @@ function onSaveEdit(event) {
   const text = form.elements.text.value.trim();
   if (!text) return;
 
-  forgetUndo();
+  rememberUndo("할 일을 고쳤습니다.");
   const todos = loadTodos().map((todo) =>
     todo.id === id
       ? { ...todo, text, weekday: parseWeekday(form.elements.weekday.value) }
